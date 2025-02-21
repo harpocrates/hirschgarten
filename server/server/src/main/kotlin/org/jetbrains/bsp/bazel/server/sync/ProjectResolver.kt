@@ -26,6 +26,7 @@ import org.jetbrains.bsp.bazel.workspacecontext.TargetsSpec
 import org.jetbrains.bsp.bazel.workspacecontext.WorkspaceContext
 import org.jetbrains.bsp.bazel.workspacecontext.WorkspaceContextProvider
 import org.jetbrains.bsp.protocol.FeatureFlags
+import java.nio.file.StandardOpenOption
 
 /** Responsible for querying bazel and constructing Project instance  */
 class ProjectResolver(
@@ -44,6 +45,15 @@ class ProjectResolver(
 ) {
   private suspend fun <T> measured(description: String, f: suspend () -> T): T = tracer.spanBuilder(description).useWithScope { f() }
 
+  fun myLog(s: String) {
+    java.nio.file.Files.writeString(
+      java.nio.file.Path.of("/Users/alec/Scratch/hirschgarten/myFileLog.txt"),
+      s + "\n",
+      java.nio.file.StandardOpenOption.CREATE,
+      java.nio.file.StandardOpenOption.APPEND  
+    )
+  }
+
   suspend fun resolve(
     cancelChecker: CancelChecker,
     build: Boolean,
@@ -56,6 +66,7 @@ class ProjectResolver(
           "Reading project view and creating workspace context",
           workspaceContextProvider::currentWorkspaceContext,
         )
+      myLog("### workspaceContext = ${workspaceContext}")
 
       val bazelExternalRulesetsQuery =
         BazelExternalRulesetsQueryImpl(
@@ -70,21 +81,25 @@ class ProjectResolver(
         measured(
           "Discovering supported external rules",
         ) { bazelExternalRulesetsQuery.fetchExternalRulesetNames(cancelChecker) }
+        myLog("### externalRulesetNames = ${externalRulesetNames}")
 
       val ruleLanguages =
         measured(
           "Mapping rule names to languages",
         ) { bazelBspAspectsManager.calculateRulesetLanguages(externalRulesetNames) }
+      myLog("### ruleLanguages = ${ruleLanguages}")
 
       val toolchains =
         measured(
           "Mapping languages to toolchains",
         ) { ruleLanguages.associateWith { bazelToolchainManager.getToolchain(it, cancelChecker) } }
+      myLog("### toolchains = ${toolchains}")
 
       val repoMapping =
         measured("Calculating external repository mapping") {
           calculateRepoMapping(workspaceContext, bazelRunner, bazelInfo, bspClientLogger)
         }
+      myLog("### repoMapping = ${repoMapping}")
 
       measured("Realizing language aspect files from templates") {
         bazelBspAspectsManager.generateAspectsFromTemplates(ruleLanguages, workspaceContext, toolchains, bazelInfo.release, repoMapping)
@@ -97,16 +112,20 @@ class ProjectResolver(
       val targetsToSync =
         requestedTargetsToSync
           ?.let { TargetsSpec(it, emptyList()) } ?: workspaceContext.targets
+      myLog("### targetsToSync = ${targetsToSync}")
 
       val buildAspectResult =
         measured(
           "Building project with aspect",
         ) { buildProjectWithAspect(cancelChecker, workspaceContext, build, targetsToSync, featureFlags, firstPhaseProject) }
+      myLog("### buildAspectResult = ${buildAspectResult}")
 
       val aspectOutputs =
         measured(
           "Reading aspect output paths",
         ) { buildAspectResult.bepOutput.filesByOutputGroupNameTransitive(BSP_INFO_OUTPUT_GROUP) }
+      myLog("### aspectOutputs = ${aspectOutputs}")
+
       val targets =
         measured(
           "Parsing aspect outputs",

@@ -31,7 +31,22 @@ class TargetInfoReader(private val bspClientLogger: BspClientLogger) {
         it.value.filter(TargetInfo::hasJvmTargetInfo).minByOrNull { targetInfo -> targetInfo.serializedSize } ?: it.value.first()
       }.mapKeys { Label.parse(it.key) }
 
+  fun myLog(s: String) {
+    java.nio.file.Files.writeString(
+      java.nio.file.Path.of("/Users/alec/Scratch/hirschgarten/myFileLog.txt"),
+      s + "\n",
+      java.nio.file.StandardOpenOption.CREATE,
+      java.nio.file.StandardOpenOption.APPEND  
+    )
+  }
+
   private fun readFromFile(file: Path): TargetInfo? {
+    val result = readFromFile2(file)
+    myLog("readFromFile(${file}) = ${result}")
+    return result
+  }
+
+  private fun readFromFile2(file: Path): TargetInfo? {
     val builder = TargetInfo.newBuilder()
     val parser =
       TextFormat.Parser
