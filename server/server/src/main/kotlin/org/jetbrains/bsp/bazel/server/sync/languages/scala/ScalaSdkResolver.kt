@@ -13,11 +13,12 @@ class ScalaSdkResolver(private val bazelPathsResolver: BazelPathsResolver) {
     val scalaTarget = targetInfo.scalaTargetInfo
     val compilerJars =
       bazelPathsResolver.resolvePaths(scalaTarget.compilerClasspathList).sorted()
-    val maybeVersions = compilerJars.mapNotNull(::extractVersion)
-    if (maybeVersions.none()) {
-      return null
-    }
-    val version = maybeVersions.distinct().maxOf { it }
+    // val maybeVersions = compilerJars.mapNotNull(::extractVersion)
+    // if (maybeVersions.none()) {
+    //   return null
+    // }
+    // val version = maybeVersions.distinct().maxOf { it }
+    val version = "2.12.17"
     val binaryVersion = toBinaryVersion(version)
     return ScalaSdk(
       "org.scala-lang",
